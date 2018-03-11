@@ -7,13 +7,32 @@ const human = require('human-to-milliseconds')
 const toStream = require('pull-stream-to-stream')
 
 function bandwidthStats (self, opts) {
-  // TODO: get the true stats :)
   return new Promise((resolve, reject) => {
+    let stats
+
+    if (opts.peer) {
+      stats = self._libp2pNode.stats.forPeer(opts.peer)
+    } else if (opts.proto) {
+      stats = self._libp2pNode.stats.forProtocol(opts.proto)
+    } else {
+      stats = self._libp2pNode.stats.global
+    }
+
+    if (!stats) {
+      resolve({
+        totalIn: new Big(0),
+        totalOut: new Big(0),
+        rateIn: new Big(0),
+        rateOut: new Big(0)
+      })
+      return
+    }
+
     resolve({
-      totalIn: new Big(0),
-      totalOut: new Big(0),
-      rateIn: new Big(0),
-      rateOut: new Big(0)
+      totalIn: stats.snapshot.dataReceived,
+      totalOut: stats.snapshot.dataSent,
+      rateIn: new Big(stats.movingAverages.dataReceived['60000'].movingAverage() / 60),
+      rateOut: new Big(stats.movingAverages.dataSent['60000'].movingAverage() / 60)
     })
   })
 }
